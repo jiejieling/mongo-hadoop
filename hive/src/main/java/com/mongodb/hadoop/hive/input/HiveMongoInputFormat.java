@@ -32,7 +32,7 @@ import com.mongodb.util.JSON;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hive.ql.exec.Utilities;
+import org.apache.hadoop.hive.ql.exec.SerializationUtilities;
 import org.apache.hadoop.hive.ql.index.IndexPredicateAnalyzer;
 import org.apache.hadoop.hive.ql.index.IndexSearchCondition;
 import org.apache.hadoop.hive.ql.io.HiveInputFormat;
@@ -63,18 +63,18 @@ import java.util.Map;
 
 /*
  * Defines a HiveInputFormat for use in reading data from MongoDB into a hive table
- * 
+ *
  */
 public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWritable> {
 
     private static final String EQUAL_OP = GenericUDFOPEqual.class.getName();
     private static final Map<String, String> MONGO_OPS =
-      new HashMap<String, String>() {{
-          put(GenericUDFOPLessThan.class.getName(), "$lt");
-          put(GenericUDFOPEqualOrLessThan.class.getName(), "$lte");
-          put(GenericUDFOPGreaterThan.class.getName(), "$gt");
-          put(GenericUDFOPEqualOrGreaterThan.class.getName(), "$gte");
-      }};
+            new HashMap<String, String>() {{
+                put(GenericUDFOPLessThan.class.getName(), "$lt");
+                put(GenericUDFOPEqualOrLessThan.class.getName(), "$lte");
+                put(GenericUDFOPGreaterThan.class.getName(), "$gt");
+                put(GenericUDFOPEqualOrGreaterThan.class.getName(), "$gte");
+            }};
 
     private static final Log LOG = LogFactory.getLog(HiveMongoInputFormat.class);
 
@@ -82,7 +82,7 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     public RecordReader<BSONWritable, BSONWritable> getRecordReader(final InputSplit split,
                                                                     final JobConf conf,
                                                                     final Reporter reporter)
-        throws IOException {
+            throws IOException {
 
         // split is of type 'MongoHiveInputSplit'
         MongoHiveInputSplit mhis = (MongoHiveInputSplit) split;
@@ -127,25 +127,25 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     }
 
     DBObject getFilter(
-      final JobConf conf, final Map<String, String> colToMongoNames) {
+            final JobConf conf, final Map<String, String> colToMongoNames) {
         String serializedExpr = conf.get(TableScanDesc.FILTER_EXPR_CONF_STR);
         if (serializedExpr != null) {
             ExprNodeGenericFuncDesc expr =
-              Utilities.deserializeExpression(serializedExpr);
+                    SerializationUtilities.deserializeExpression(serializedExpr);
             IndexPredicateAnalyzer analyzer =
-              IndexPredicateAnalyzer.createAnalyzer(false);
+                    IndexPredicateAnalyzer.createAnalyzer(false);
 
             // Allow all column names.
             String columnNamesStr =
-              conf.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR);
+                    conf.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR);
             String[] columnNames =
-              StringUtils.split(columnNamesStr, '\\', StringUtils.COMMA);
+                    StringUtils.split(columnNamesStr, '\\', StringUtils.COMMA);
             for (String colName : columnNames) {
                 analyzer.allowColumnName(colName);
             }
 
             List<IndexSearchCondition> searchConditions =
-              new LinkedList<IndexSearchCondition>();
+                    new LinkedList<IndexSearchCondition>();
             analyzer.analyzePredicate(expr, searchConditions);
 
             return getFilter(searchConditions, colToMongoNames);
@@ -154,8 +154,8 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     }
 
     DBObject getFilter(
-      final List<IndexSearchCondition> searchConditions,
-      final Map<String, String> colToMongoNames) {
+            final List<IndexSearchCondition> searchConditions,
+            final Map<String, String> colToMongoNames) {
         DBObject filter = new BasicDBObject();
         for (IndexSearchCondition isc : searchConditions) {
             String comparisonName = isc.getComparisonOp();
@@ -169,7 +169,7 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
                 String mongoOp = MONGO_OPS.get(comparisonName);
                 if (mongoOp != null) {
                     filter.put(
-                      mongoName, new BasicDBObject(mongoOp, constant));
+                            mongoName, new BasicDBObject(mongoOp, constant));
                 } else {
                     // Log the fact that we don't support this operator.
                     // It's still ok to return a query; we'll just return a
@@ -182,15 +182,15 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     }
 
     DBObject getProjection(
-      final JobConf conf, final Map<String, String> colToMongoNames) {
+            final JobConf conf, final Map<String, String> colToMongoNames) {
         boolean readAllCols =
-          conf.getBoolean(ColumnProjectionUtils.READ_ALL_COLUMNS, true);
+                conf.getBoolean(ColumnProjectionUtils.READ_ALL_COLUMNS, true);
         DBObject mongoProjection = null;
         if (!readAllCols) {
             String columnNamesStr =
-              conf.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR);
+                    conf.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR);
             String[] columnNames =
-              StringUtils.split(columnNamesStr, '\\', StringUtils.COMMA);
+                    StringUtils.split(columnNamesStr, '\\', StringUtils.COMMA);
             boolean foundId = false;
             mongoProjection = new BasicDBObject();
             for (String col : columnNames) {
@@ -222,7 +222,7 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     }
 
     private String resolveMongoName(
-      final String colName, final Map<String, String> colNameMapping) {
+            final String colName, final Map<String, String> colNameMapping) {
         if (null == colNameMapping) {
             return colName;
         }
@@ -241,11 +241,11 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
 
     @Override
     public FileSplit[] getSplits(final JobConf conf, final int numSplits)
-        throws IOException {
+            throws IOException {
         try {
             MongoSplitter splitterImpl = MongoSplitterFactory.getSplitter(conf);
             final List<org.apache.hadoop.mapreduce.InputSplit> splits =
-                splitterImpl.calculateSplits();
+                    splitterImpl.calculateSplits();
             InputSplit[] splitIns = splits.toArray(new InputSplit[splits.size()]);
 
             // wrap InputSplits in FileSplits so that 'getPath' 

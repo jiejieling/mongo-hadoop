@@ -7,10 +7,10 @@ apply plugin: 'com.github.ben-manes.versions'
 
 ext.configDir = new File(rootDir, 'config')
 ext.hadoopBinaries = "${rootDir}/hadoop-binaries".toString()
-ext.javaDriverVersion = '3.2.1'
-ext.hiveVersion = System.getenv("HIVE_VERSION") ?: '1.2.1'
+ext.javaDriverVersion = '3.12.9'
+ext.hiveVersion = System.getenv("HIVE_VERSION") ?: '3.1.0'
 ext.pigVersion = System.getenv("PIG_VERSION") ?: '0.15.0'
-ext.hadoopVersion = System.getenv("HADOOP_VERSION") ?: '2.7.2'
+ext.hadoopVersion = System.getenv("HADOOP_VERSION") ?: '3.1.0'
 ext.sparkVersion = System.getenv("SPARK_VERSION") ?: '1.6.0'
 ext.scalaVersion = System.getenv("SCALA_VERSION") ?: '2.11'
 ext.isHadoopV1 = "$hadoopVersion".startsWith("1.")
@@ -265,16 +265,16 @@ task apidocs {
         }
     }
     // Generate an index.html.
-    new File("docs/index.html").withWriter { writer ->
-        writer.write("<html><head><title>MongoDB Hadoop Connector " +
-                "Modules</title></head><body><h3>MongoDB Hadoop Connector " +
-                "Modules</h3><ul>")
-        noExamples.each { proj ->
-            writer.append("<li><a href='" + proj.getName() + "/index.html' " +
-                    "rel='nofollow'>" + proj.getName() + "</li>")
-        }
-        writer.append("</ul></body></html>")
-    }
+//    new File("docs/index.html").withWriter { writer ->
+//        writer.write("<html><head><title>MongoDB Hadoop Connector " +
+//                "Modules</title></head><body><h3>MongoDB Hadoop Connector " +
+//                "Modules</h3><ul>")
+//        noExamples.each { proj ->
+//            writer.append("<li><a href='" + proj.getName() + "/index.html' " +
+//                    "rel='nofollow'>" + proj.getName() + "</li>")
+//        }
+//        writer.append("</ul></body></html>")
+//    }
 }
 
 idea {

@@ -60,6 +60,7 @@ public class StandaloneMongoSplitter extends MongoCollectionSplitter {
 
     public StandaloneMongoSplitter(final Configuration conf) {
         super(conf);
+        LOG.info("Use StandaloneMongoSplitter to split");
     }
 
     @Override

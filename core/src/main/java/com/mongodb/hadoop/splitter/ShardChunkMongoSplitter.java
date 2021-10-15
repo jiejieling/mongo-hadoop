@@ -46,6 +46,7 @@ public class ShardChunkMongoSplitter extends MongoCollectionSplitter {
 
     public ShardChunkMongoSplitter(final Configuration conf) {
         super(conf);
+        LOG.info("Use ShardChunkMongoSplitter to split");
     }
 
     /**
@@ -78,6 +79,8 @@ public class ShardChunkMongoSplitter extends MongoCollectionSplitter {
         }
 
         List<InputSplit> splits = new ArrayList<InputSplit>(chunks.size());
+        LOG.info("Mongo shard chunks size: " + chunks.size());
+
         for (DBObject chunk : chunks) {
             BasicDBObject chunkLowerBound = (BasicDBObject) chunk.get("min");
             BasicDBObject chunkUpperBound = (BasicDBObject) chunk.get("max");
@@ -134,6 +137,12 @@ public class ShardChunkMongoSplitter extends MongoCollectionSplitter {
     public List<InputSplit> calculateSplits() throws SplitFailedException {
         DB configDB = getConfigDB();
         DBCollection chunksCollection = configDB.getCollection("chunks");
+
+        // Query current table mongo shard chunks
+        MongoClientURI inputURI = MongoConfigUtil.getInputURI(getConfiguration());
+        DBObject query = new BasicDBObject();
+        query.put("ns", inputURI.getDatabase() + '.' + inputURI.getCollection());
+
         Map<String, List<String>> shardsMap;
         try {
             shardsMap = getShardsMap();
@@ -144,7 +153,7 @@ public class ShardChunkMongoSplitter extends MongoCollectionSplitter {
             throw new SplitFailedException("Couldn't get shards information from config server", e);
         }
 
-        return calculateSplitsFromChunks(chunksCollection.find().toArray(), shardsMap);
+        return calculateSplitsFromChunks(chunksCollection.find(query).toArray(), shardsMap);
     }
 
 }

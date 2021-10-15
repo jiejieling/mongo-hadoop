@@ -87,40 +87,7 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
         // split is of type 'MongoHiveInputSplit'
         MongoHiveInputSplit mhis = (MongoHiveInputSplit) split;
 
-        // Get column name mapping.
-        Map<String, String> colToMongoNames = columnMapping(conf);
-
-        // Add projection from Hive.
-        DBObject mongoProjection = getProjection(conf, colToMongoNames);
         MongoInputSplit delegate = (MongoInputSplit) mhis.getDelegate();
-        if (mongoProjection != null) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Adding MongoDB projection : " + mongoProjection);
-            }
-            delegate.setFields(mongoProjection);
-        }
-        // Filter from Hive.
-        DBObject filter = getFilter(conf, colToMongoNames);
-        // Combine with filter from table, if there is one.
-        if (conf.get(MongoConfigUtil.INPUT_QUERY) != null) {
-            DBObject tableFilter = MongoConfigUtil.getQuery(conf);
-            if (null == filter) {
-                filter = tableFilter;
-            } else {
-                BasicDBList conditions = new BasicDBList();
-                conditions.add(filter);
-                conditions.add(tableFilter);
-                // Use $and clause so we don't overwrite any of the table
-                // filter.
-                filter = new BasicDBObject("$and", conditions);
-            }
-        }
-        if (filter != null) {
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Adding MongoDB query: " + filter);
-            }
-            delegate.setQuery(filter);
-        }
 
         // return MongoRecordReader. Delegate is of type 'MongoInputSplit'
         return new MongoRecordReader(delegate);
@@ -129,6 +96,10 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     DBObject getFilter(
             final JobConf conf, final Map<String, String> colToMongoNames) {
         String serializedExpr = conf.get(TableScanDesc.FILTER_EXPR_CONF_STR);
+        String serializedText = conf.get(TableScanDesc.FILTER_TEXT_CONF_STR);
+
+        LOG.info("Get job filter: " + serializedText);
+
         if (serializedExpr != null) {
             ExprNodeGenericFuncDesc expr =
                     SerializationUtilities.deserializeExpression(serializedExpr);
@@ -136,12 +107,8 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
                     IndexPredicateAnalyzer.createAnalyzer(false);
 
             // Allow all column names.
-            String columnNamesStr =
-                    conf.get(ColumnProjectionUtils.READ_COLUMN_NAMES_CONF_STR);
-            String[] columnNames =
-                    StringUtils.split(columnNamesStr, '\\', StringUtils.COMMA);
-            for (String colName : columnNames) {
-                analyzer.allowColumnName(colName);
+            for (String col : colToMongoNames.keySet()) {
+                analyzer.allowColumnName(col);
             }
 
             List<IndexSearchCondition> searchConditions =
@@ -156,6 +123,9 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     DBObject getFilter(
             final List<IndexSearchCondition> searchConditions,
             final Map<String, String> colToMongoNames) {
+
+        LOG.info("Parse filter get searchConditions: " + searchConditions);
+
         DBObject filter = new BasicDBObject();
         for (IndexSearchCondition isc : searchConditions) {
             String comparisonName = isc.getComparisonOp();
@@ -200,10 +170,6 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
                 }
                 mongoProjection.put(mapped, 1);
             }
-            // Remove _id unless asked for explicitly.
-            if (!foundId) {
-                mongoProjection.put("_id", 0);
-            }
         }
         return mongoProjection;
     }
@@ -243,6 +209,31 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
     public FileSplit[] getSplits(final JobConf conf, final int numSplits)
             throws IOException {
         try {
+
+            // Get column name mapping.
+            Map<String, String> colToMongoNames = columnMapping(conf);
+
+            // Add projection from Hive.
+            DBObject mongoProjection = getProjection(conf, colToMongoNames);
+
+            // Filter from Hive.
+            DBObject filter = getFilter(conf, colToMongoNames);
+
+            // Combine with filter from table, if there is one.
+            if (conf.get(MongoConfigUtil.INPUT_QUERY) != null) {
+                DBObject tableFilter = MongoConfigUtil.getQuery(conf);
+                if (null == filter) {
+                    filter = tableFilter;
+                } else {
+                    BasicDBList conditions = new BasicDBList();
+                    conditions.add(filter);
+                    conditions.add(tableFilter);
+                    // Use $and clause so we don't overwrite any of the table
+                    // filter.
+                    filter = new BasicDBObject("$and", conditions);
+                }
+            }
+
             MongoSplitter splitterImpl = MongoSplitterFactory.getSplitter(conf);
             final List<org.apache.hadoop.mapreduce.InputSplit> splits =
                     splitterImpl.calculateSplits();

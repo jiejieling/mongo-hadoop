@@ -37,6 +37,7 @@ public class SampleSplitter extends MongoCollectionSplitter {
 
     public SampleSplitter(final Configuration conf) {
         super(conf);
+        LOG.info("Use SampleSplitter to split");
     }
 
     @Override

@@ -46,6 +46,7 @@ public class SingleMongoSplitter extends MongoCollectionSplitter {
 
     public SingleMongoSplitter(final Configuration conf) {
         super(conf);
+        LOG.info("Use SingleMongoSplitter to split");
     }
 
     @Override

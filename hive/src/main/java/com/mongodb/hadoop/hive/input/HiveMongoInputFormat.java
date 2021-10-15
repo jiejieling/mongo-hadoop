@@ -170,6 +170,10 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
                 }
                 mongoProjection.put(mapped, 1);
             }
+//            // Remove _id unless asked for explicitly.
+//            if (!foundId) {
+//                mongoProjection.put("_id", 0);
+//            }
         }
         return mongoProjection;
     }
@@ -243,7 +247,20 @@ public class HiveMongoInputFormat extends HiveInputFormat<BSONWritable, BSONWrit
             // doesn't produce an error (Hive bug)
             FileSplit[] wrappers = new FileSplit[splitIns.length];
             Path path = new Path(conf.get(MongoStorageHandler.TABLE_LOCATION));
+
             for (int i = 0; i < wrappers.length; i++) {
+                MongoInputSplit split = (MongoInputSplit) splitIns[i];
+
+                // 解析SQL 中的查询列，添加到查询当中
+                if (mongoProjection != null) {
+                    split.setFields(mongoProjection);
+                }
+
+                // 解析SQL 中的查询条件，添加到查询当中
+                if (filter != null) {
+                    split.setQuery(filter);
+                }
+
                 wrappers[i] = new MongoHiveInputSplit(splitIns[i], path);
             }
 
